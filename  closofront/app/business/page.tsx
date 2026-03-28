@@ -1,6 +1,5 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { 
@@ -10,7 +9,10 @@ import {
   TrendingUp,
   ArrowUpRight,
   Plus,
-  MoreHorizontal
+  ShieldCheck,
+  Clock3,
+  AlertTriangle,
+  RefreshCcw,
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -109,6 +111,9 @@ export default function BusinessDashboard() {
   const [verificationReference, setVerificationReference] = useState("")
   const [verificationNote, setVerificationNote] = useState("")
   const [verifyMessage, setVerifyMessage] = useState<string | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isVerifyingReferral, setIsVerifyingReferral] = useState(false)
+  const [verifyingSaleId, setVerifyingSaleId] = useState<string | null>(null)
 
   const loadBusinessDashboard = async () => {
     setLoading(true)
@@ -145,6 +150,7 @@ export default function BusinessDashboard() {
       setVerifyMessage("Referral code ve tutar zorunlu.")
       return
     }
+    setIsVerifyingReferral(true)
     const result = await apiPost<{ saleId: string; referralCode: string }>(
       "/sales/by-referral",
       {
@@ -160,6 +166,7 @@ export default function BusinessDashboard() {
       setVerifyMessage(err instanceof Error ? err.message : "Dogrulama basarisiz.")
       return null
     })
+    setIsVerifyingReferral(false)
     if (!result) return
     setVerifyMessage(`Satis dogrulandi. Sale ID: ${result.saleId} | Referral: ${result.referralCode}`)
     setReferralCode("")
@@ -171,6 +178,7 @@ export default function BusinessDashboard() {
 
   const verifyQueuedSale = async (saleId: string) => {
     setVerifyMessage(null)
+    setVerifyingSaleId(saleId)
     const result = await apiPost<{ saleId: string }>(
       "/sales/verify",
       {
@@ -185,6 +193,7 @@ export default function BusinessDashboard() {
       setVerifyMessage(err instanceof Error ? err.message : "Queued sale verification failed.")
       return null
     })
+    setVerifyingSaleId(null)
     if (!result) return
     setVerifyMessage(`Queued sale verified: ${result.saleId}`)
     setVerificationReference("")
@@ -204,15 +213,39 @@ export default function BusinessDashboard() {
     [stats.revenue],
   )
 
+  const profileWarnings = useMemo(() => {
+    const warnings: string[] = []
+    if (!profile?.companyName) warnings.push("Company name eksik.")
+    if (!profile?.walletAddress) warnings.push("Payout wallet adresi tanımlı değil.")
+    return warnings
+  }, [profile])
+
+  const avgTicket = useMemo(() => {
+    if (!stats.salesCount) return 0
+    return stats.revenue / stats.salesCount
+  }, [stats.revenue, stats.salesCount])
+
+  const refreshDashboard = async () => {
+    setIsRefreshing(true)
+    await loadBusinessDashboard()
+    setIsRefreshing(false)
+  }
+
+  const statusBadgeClass = (status: string) => {
+    if (status === "verified") return "bg-[#1DBF73]/10 text-[#1DBF73] border-0"
+    if (status === "pending") return "bg-[#FFC107]/10 text-[#FFC107] border-0"
+    return "bg-[#404145] text-[#D1D5DB] border-0"
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 bg-[#1A1B1D] min-h-screen">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-            Business Dashboard
+            Startup Operations Dashboard
           </h1>
           <p className="text-[#95979D]">
-            Track your products and affiliate network performance.
+            Product pipeline, seller network, verification queue and payout health in one panel.
           </p>
           {profile && (
             <p className="text-xs text-[#95979D] mt-2">
@@ -220,13 +253,38 @@ export default function BusinessDashboard() {
             </p>
           )}
         </div>
-        <Button className="bg-[#1DBF73] hover:bg-[#19A463] text-white font-medium gap-2" asChild>
-          <Link href="/business/products/new">
-            <Plus className="h-4 w-4" />
-            Add Product
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            className="border-[#404145] text-white hover:bg-[#2B2C2E] bg-[#222325]"
+            onClick={refreshDashboard}
+            disabled={isRefreshing}
+          >
+            <RefreshCcw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+          <Button className="bg-[#1DBF73] hover:bg-[#19A463] text-white font-medium gap-2" asChild>
+            <Link href="/business/products/new">
+              <Plus className="h-4 w-4" />
+              Add Product
+            </Link>
+          </Button>
+        </div>
       </div>
+      {!!profileWarnings.length && (
+        <div className="mb-6 rounded-lg border border-[#FFC107]/40 bg-[#FFC107]/10 p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-[#FFC107] mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-[#FFD666]">Profile completion required</p>
+              <p className="text-xs text-[#E9E9E9] mt-1">{profileWarnings.join(" ")}</p>
+              <Button size="sm" className="mt-3 bg-[#1A1B1D] text-white hover:bg-[#2B2C2E]" asChild>
+                <Link href="/business/settings">Go to settings</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       {loading && (
         <div className="mb-6 rounded-lg border border-[#404145] bg-[#222325] p-3 text-sm text-[#95979D]">
           Loading business dashboard...
@@ -268,8 +326,12 @@ export default function BusinessDashboard() {
             placeholder="verification reference"
             className="bg-[#1A1B1D] border-[#404145] text-white"
           />
-          <Button className="bg-[#1DBF73] hover:bg-[#19A463] text-white" onClick={verifyReferralSale}>
-            Verify Referral Sale
+          <Button
+            className="bg-[#1DBF73] hover:bg-[#19A463] text-white"
+            onClick={verifyReferralSale}
+            disabled={isVerifyingReferral}
+          >
+            {isVerifyingReferral ? "Verifying..." : "Verify Referral Sale"}
           </Button>
         </div>
         <Input
@@ -290,7 +352,7 @@ export default function BusinessDashboard() {
             </div>
             <Badge className="text-xs bg-[#1DBF73]/10 text-[#1DBF73] border-0 gap-1">
               <ArrowUpRight className="h-3 w-3" />
-              18%
+              {stats.verificationRate.toFixed(1)}%
             </Badge>
           </div>
           <p className="text-sm text-[#95979D] mb-1">Total Revenue (MON)</p>
@@ -304,7 +366,7 @@ export default function BusinessDashboard() {
             </div>
             <Badge className="text-xs bg-[#446EE7]/10 text-[#446EE7] border-0 gap-1">
               <ArrowUpRight className="h-3 w-3" />
-              12%
+              {products.length} products
             </Badge>
           </div>
           <p className="text-sm text-[#95979D] mb-1">Active Sellers</p>
@@ -318,7 +380,7 @@ export default function BusinessDashboard() {
             </div>
             <Badge className="text-xs bg-[#1DBF73]/10 text-[#1DBF73] border-0 gap-1">
               <ArrowUpRight className="h-3 w-3" />
-              24%
+              {stats.pendingSales} pending
             </Badge>
           </div>
           <p className="text-sm text-[#95979D] mb-1">Total Sales</p>
@@ -336,19 +398,41 @@ export default function BusinessDashboard() {
         </div>
       </div>
 
-      <div className="grid sm:grid-cols-3 gap-4 mb-8">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="bg-[#222325] rounded-xl border border-[#404145] p-4">
           <p className="text-xs text-[#95979D]">Verified Sales</p>
-          <p className="text-xl font-bold text-white">{stats.verifiedSales}</p>
+          <p className="text-xl font-bold text-white flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-[#1DBF73]" />
+            {stats.verifiedSales}
+          </p>
         </div>
         <div className="bg-[#222325] rounded-xl border border-[#404145] p-4">
           <p className="text-xs text-[#95979D]">Pending Verifications</p>
-          <p className="text-xl font-bold text-white">{stats.pendingSales}</p>
+          <p className="text-xl font-bold text-white flex items-center gap-2">
+            <Clock3 className="h-5 w-5 text-[#FFC107]" />
+            {stats.pendingSales}
+          </p>
         </div>
         <div className="bg-[#222325] rounded-xl border border-[#404145] p-4">
           <p className="text-xs text-[#95979D]">Verification Rate</p>
           <p className="text-xl font-bold text-white">{stats.verificationRate.toFixed(2)}%</p>
         </div>
+        <div className="bg-[#222325] rounded-xl border border-[#404145] p-4">
+          <p className="text-xs text-[#95979D]">Average Ticket</p>
+          <p className="text-xl font-bold text-white">{avgTicket.toFixed(2)} MON</p>
+        </div>
+      </div>
+
+      <div className="mb-8 flex flex-wrap gap-2">
+        <Button variant="outline" className="border-[#404145] bg-[#222325] text-white hover:bg-[#2B2C2E]" asChild>
+          <Link href="/business/products">Manage products</Link>
+        </Button>
+        <Button variant="outline" className="border-[#404145] bg-[#222325] text-white hover:bg-[#2B2C2E]" asChild>
+          <Link href="/business/analytics">Open analytics</Link>
+        </Button>
+        <Button variant="outline" className="border-[#404145] bg-[#222325] text-white hover:bg-[#2B2C2E]" asChild>
+          <Link href="/business/payouts">Review payouts</Link>
+        </Button>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6 mb-8">
@@ -434,12 +518,16 @@ export default function BusinessDashboard() {
               <div>
                 <p className="text-white text-sm font-medium">{sale.productTitle}</p>
                 <p className="text-xs text-[#95979D]">
-                  Seller: {sale.sellerName} | Amount: {sale.grossAmount.toFixed(2)} MON | Ref: {sale.externalReference ?? "-"}
+                  Seller: {sale.sellerName} | Amount: {sale.grossAmount.toFixed(2)} MON | Referral: {sale.referralCode ?? "-"}
                 </p>
                 <p className="text-xs text-[#95979D]">Created: {new Date(sale.createdAt).toLocaleString()}</p>
               </div>
-              <Button className="bg-[#1DBF73] hover:bg-[#19A463] text-white" onClick={() => verifyQueuedSale(sale.id)}>
-                Verify Sale
+              <Button
+                className="bg-[#1DBF73] hover:bg-[#19A463] text-white"
+                onClick={() => verifyQueuedSale(sale.id)}
+                disabled={verifyingSaleId === sale.id}
+              >
+                {verifyingSaleId === sale.id ? "Verifying..." : "Verify Sale"}
               </Button>
             </div>
           ))}
@@ -464,7 +552,7 @@ export default function BusinessDashboard() {
                 <th className="text-left py-4 px-6 text-sm font-medium text-[#95979D]">Product</th>
                 <th className="text-left py-4 px-6 text-sm font-medium text-[#95979D]">Price</th>
                 <th className="text-left py-4 px-6 text-sm font-medium text-[#95979D]">Commission</th>
-                <th className="text-left py-4 px-6 text-sm font-medium text-[#95979D]">Active Sellers</th>
+                <th className="text-left py-4 px-6 text-sm font-medium text-[#95979D]">Verification</th>
                 <th className="text-left py-4 px-6 text-sm font-medium text-[#95979D]">Total Sales</th>
                 <th className="text-right py-4 px-6 text-sm font-medium text-[#95979D]">Actions</th>
               </tr>
@@ -484,7 +572,14 @@ export default function BusinessDashboard() {
                     </Badge>
                   </td>
                   <td className="py-4 px-6">
-                    <span className="text-white">{stats.activeSellers}</span>
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-[#1DBF73]/10 text-[#1DBF73] border-0">
+                        V: {product.verifiedCount}
+                      </Badge>
+                      <Badge className="bg-[#FFC107]/10 text-[#FFC107] border-0">
+                        P: {product.pendingCount}
+                      </Badge>
+                    </div>
                   </td>
                   <td className="py-4 px-6">
                     <span className="text-white">{product.salesCount.toLocaleString()}</span>
@@ -493,9 +588,6 @@ export default function BusinessDashboard() {
                     <div className="flex items-center justify-end gap-2">
                       <Button variant="ghost" size="sm" className="text-[#95979D] hover:text-white hover:bg-[#2B2C2E]" asChild>
                         <Link href={`/business/products/${product.id}`}>Edit</Link>
-                      </Button>
-                      <Button variant="ghost" size="icon" className="text-[#95979D] hover:text-white hover:bg-[#2B2C2E]">
-                        <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </div>
                   </td>
@@ -535,7 +627,9 @@ export default function BusinessDashboard() {
                   <td className="py-3 px-6 text-white text-sm">{sale.productTitle}</td>
                   <td className="py-3 px-6 text-white text-sm">{sale.sellerName}</td>
                   <td className="py-3 px-6 text-white text-sm">{sale.grossAmount.toFixed(2)} MON</td>
-                  <td className="py-3 px-6 text-xs text-[#95979D]">{sale.status}</td>
+                  <td className="py-3 px-6 text-xs">
+                    <Badge className={statusBadgeClass(sale.status)}>{sale.status}</Badge>
+                  </td>
                   <td className="py-3 px-6 text-xs text-[#95979D]">{sale.verificationMethod ?? "-"}</td>
                   <td className="py-3 px-6 text-xs text-[#95979D]">{sale.verificationReference ?? sale.externalReference ?? "-"}</td>
                 </tr>
