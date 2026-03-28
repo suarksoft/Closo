@@ -42,6 +42,20 @@ Business/Admin token required:
 - `GET /search-console/sites`
 - `POST /search-console/performance`
 
+## Sales Verification API (Startup Ops)
+
+Business/Admin token required:
+
+- `POST /sales/verify` (approve pending sale)
+- `POST /sales/reject` (reject pending sale)
+- `POST /sales/by-referral` (verify directly with referral code)
+
+Webhook mode for startup internal systems:
+
+- `POST /sales/webhook/verification`
+- Header: `x-closo-webhook-secret: <SALES_WEBHOOK_SECRET>`
+- Required body: `businessId`, `productId`, `externalReference`, `status` (`verified` or `rejected`)
+
 Example body:
 
 ```json

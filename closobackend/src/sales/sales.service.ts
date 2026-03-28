@@ -6,6 +6,8 @@ import { PayoutsService } from "../payouts/payouts.service";
 import { AuthUser } from "../auth/auth.types";
 import { CreateReferralSaleDto } from "./dto/create-referral-sale.dto";
 import { ReferralsService } from "../referrals/referrals.service";
+import { RejectSaleDto } from "./dto/reject-sale.dto";
+import { WebhookVerifySaleDto } from "./dto/webhook-verify-sale.dto";
 
 @Injectable()
 export class SalesService {
@@ -302,12 +304,159 @@ export class SalesService {
     return { saleId: dto.saleId, commission, payout };
   }
 
+  async reject(actor: AuthUser, dto: RejectSaleDto) {
+    const saleRes = await this.db.query<{
+      id: string;
+      business_id: string;
+      status: string;
+    }>(
+      `SELECT id, business_id, status
+       FROM sales
+       WHERE id = $1`,
+      [dto.saleId],
+    );
+    const sale = saleRes.rows[0];
+    if (!sale) throw new BadRequestException("Sale not found");
+    if (sale.status !== "pending") throw new BadRequestException("Only pending sales can be rejected");
+    if (actor.role === "business" && sale.business_id !== actor.id) {
+      throw new ForbiddenException("You can only reject your own product sales");
+    }
+
+    await this.db.query(
+      `UPDATE sales
+       SET status = 'rejected',
+           verified_by = $2,
+           verification_method = $3,
+           verification_reference = $4,
+           verification_note = $5,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [
+        dto.saleId,
+        actor.id,
+        dto.verificationMethod ?? "manual_reject",
+        dto.verificationReference ?? null,
+        dto.verificationNote ?? null,
+      ],
+    );
+    await this.createVerificationEvent({
+      saleId: dto.saleId,
+      actorId: actor.id,
+      actorRole: actor.role,
+      method: dto.verificationMethod ?? "manual_reject",
+      reference: dto.verificationReference,
+      note: dto.verificationNote,
+    });
+
+    return { saleId: dto.saleId, status: "rejected" };
+  }
+
+  async verifyFromWebhook(dto: WebhookVerifySaleDto) {
+    const businessRes = await this.db.query<{ id: string; role: string }>(
+      `SELECT id, role
+       FROM users
+       WHERE id = $1
+       LIMIT 1`,
+      [dto.businessId],
+    );
+    const business = businessRes.rows[0];
+    if (!business || business.role !== "business") {
+      throw new BadRequestException("Webhook businessId is not valid");
+    }
+
+    const saleRes = await this.db.query<{
+      id: string;
+      status: string;
+      referral_code: string | null;
+    }>(
+      `SELECT id, status, referral_code
+       FROM sales
+       WHERE business_id = $1
+         AND product_id = $2
+         AND external_reference = $3
+       LIMIT 1`,
+      [dto.businessId, dto.productId, dto.externalReference],
+    );
+    const sale = saleRes.rows[0];
+    if (!sale) {
+      throw new BadRequestException("Sale not found for webhook payload");
+    }
+    if (sale.status !== "pending") {
+      throw new BadRequestException("Webhook sale already processed");
+    }
+
+    if (dto.status === "rejected") {
+      await this.db.query(
+        `UPDATE sales
+         SET status = 'rejected',
+             verified_by = $2,
+             verification_method = $3,
+             verification_reference = $4,
+             verification_note = $5,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [
+          sale.id,
+          dto.businessId,
+          dto.verificationMethod ?? "startup_webhook_reject",
+          dto.verificationReference ?? null,
+          dto.verificationNote ?? null,
+        ],
+      );
+      await this.createVerificationEvent({
+        saleId: sale.id,
+        actorId: dto.businessId,
+        actorRole: "business",
+        method: dto.verificationMethod ?? "startup_webhook_reject",
+        reference: dto.verificationReference,
+        note: dto.verificationNote,
+      });
+      return { saleId: sale.id, status: "rejected" };
+    }
+
+    await this.db.query(
+      `UPDATE sales
+       SET status = 'verified',
+           verified_at = NOW(),
+           verified_by = $2,
+           verification_method = $3,
+           verification_reference = $4,
+           verification_note = $5,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [
+        sale.id,
+        dto.businessId,
+        dto.verificationMethod ?? "startup_webhook",
+        dto.verificationReference ?? null,
+        dto.verificationNote ?? null,
+      ],
+    );
+    await this.createVerificationEvent({
+      saleId: sale.id,
+      actorId: dto.businessId,
+      actorRole: "business",
+      method: dto.verificationMethod ?? "startup_webhook",
+      reference: dto.verificationReference,
+      note: dto.verificationNote,
+    });
+
+    if (sale.referral_code) {
+      await this.referralsService.incrementConversion(sale.referral_code);
+    }
+    const { commission, payout } = await this.createCommissionAndMaybePayout(
+      sale.id,
+      dto.triggerPayout !== false,
+    );
+    return { saleId: sale.id, status: "verified", commission, payout };
+  }
+
   async listMine(user: AuthUser) {
     if (user.role === "seller") {
       const res = await this.db.query(
         `SELECT id, product_id AS "productId", lead_id AS "leadId", gross_amount::float AS "grossAmount", status,
                 verified_at AS "verifiedAt", verification_method AS "verificationMethod",
-                verification_reference AS "verificationReference", created_at AS "createdAt"
+                verification_reference AS "verificationReference", verification_note AS "verificationNote", created_at AS "createdAt"
          FROM sales
          WHERE seller_id = $1
          ORDER BY created_at DESC`,
@@ -319,7 +468,7 @@ export class SalesService {
     const res = await this.db.query(
       `SELECT id, product_id AS "productId", lead_id AS "leadId", gross_amount::float AS "grossAmount", status,
               verified_at AS "verifiedAt", verification_method AS "verificationMethod",
-              verification_reference AS "verificationReference", created_at AS "createdAt"
+              verification_reference AS "verificationReference", verification_note AS "verificationNote", created_at AS "createdAt"
        FROM sales
        WHERE business_id = $1
        ORDER BY created_at DESC`,

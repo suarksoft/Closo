@@ -32,8 +32,15 @@ export function Header({ variant = "dark", showSearch = false }: HeaderProps) {
     setSessionUser(getSessionUser())
   }, [])
 
-  const dashboardHref = sessionUser?.role === "business" ? "/business" : "/dashboard"
+  const isLoggedIn = !!sessionUser
+  const isBusiness = sessionUser?.role === "business"
+  const dashboardHref = isBusiness ? "/business" : "/dashboard"
+  const signInHref = "/onboarding"
+  const sellerWorkspaceHref = "/dashboard/products"
+  const businessCtaHref = isLoggedIn ? (isBusiness ? "/business/products/new" : "/business") : "/onboarding"
+  const businessCtaLabel = isBusiness ? "Add Product" : "List a Product"
   const joinLabel = sessionUser ? sessionUser.name : "Join"
+  const closeMobileMenu = () => setMobileMenuOpen(false)
 
   return (
     <header className={`${bgClass} border-b sticky top-0 z-50`}>
@@ -71,8 +78,12 @@ export function Header({ variant = "dark", showSearch = false }: HeaderProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48">
-                <DropdownMenuItem>For Sellers</DropdownMenuItem>
-                <DropdownMenuItem>For Businesses</DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/marketplace">For Sellers</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/business">{isLoggedIn ? "Business Panel" : "For Businesses"}</Link>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -96,28 +107,28 @@ export function Header({ variant = "dark", showSearch = false }: HeaderProps) {
               EN
             </Button>
 
-            <Link href="/business">
+            <Link href={businessCtaHref}>
               <Button variant="ghost" className={`${textClass} hover:bg-transparent hover:opacity-80 text-sm font-normal px-3`}>
-                Become a Seller
+                {businessCtaLabel}
               </Button>
             </Link>
 
-            {sessionUser ? (
+            {isLoggedIn ? (
               <Button variant="ghost" className={`${textClass} hover:bg-transparent hover:opacity-80 text-sm font-normal px-3`} asChild>
                 <Link href={dashboardHref}>Dashboard</Link>
               </Button>
             ) : (
               <Button variant="ghost" className={`${textClass} hover:bg-transparent hover:opacity-80 text-sm font-normal px-3`} asChild>
-                <Link href="/dashboard">Sign in</Link>
+                <Link href={signInHref}>Sign in</Link>
               </Button>
             )}
 
-            {sessionUser ? (
+            {isLoggedIn ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
-                    className={`ml-2 rounded-md text-sm font-medium ${isDark ? "border-white text-black hover:bg-white hover:text-[#222325]" : "border-[#222325] text-[#222325] hover:bg-[#222325] hover:text-white"}`}
+                    className={`ml-2 rounded-md text-sm font-medium ${isDark ? "border-white text-white hover:bg-white hover:text-[#222325]" : "border-[#222325] text-[#222325] hover:bg-[#222325] hover:text-white"}`}
                   >
                     {joinLabel}
                   </Button>
@@ -126,9 +137,19 @@ export function Header({ variant = "dark", showSearch = false }: HeaderProps) {
                   <DropdownMenuItem asChild>
                     <Link href={dashboardHref}>Go to dashboard</Link>
                   </DropdownMenuItem>
+                  {!isBusiness && (
+                    <DropdownMenuItem asChild>
+                      <Link href={sellerWorkspaceHref}>Sales workspace</Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem asChild>
                     <Link href="/marketplace">Marketplace</Link>
                   </DropdownMenuItem>
+                  {isBusiness && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/business/products/new">Add product</Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem
                     onClick={() => {
                       signOut()
@@ -144,7 +165,7 @@ export function Header({ variant = "dark", showSearch = false }: HeaderProps) {
               <Link href="/onboarding">
                 <Button
                   variant="outline"
-                  className={`ml-2 rounded-md text-sm font-medium ${isDark ? "border-white text-black hover:bg-white hover:text-[#222325]" : "border-[#222325] text-[#222325] hover:bg-[#222325] hover:text-white"}`}
+                  className={`ml-2 rounded-md text-sm font-medium ${isDark ? "border-white text-white hover:bg-white hover:text-[#222325]" : "border-[#222325] text-[#222325] hover:bg-[#222325] hover:text-white"}`}
                 >
                   {joinLabel}
                 </Button>
@@ -165,26 +186,29 @@ export function Header({ variant = "dark", showSearch = false }: HeaderProps) {
         {mobileMenuOpen && (
           <div className={`lg:hidden py-4 border-t ${isDark ? 'border-[#404145]' : 'border-[#E4E5E7]'}`}>
             <nav className="flex flex-col gap-2">
-              <Link href="/marketplace" className={`px-4 py-2 ${textClass} hover:opacity-80`}>
+              <Link href="/marketplace" className={`px-4 py-2 ${textClass} hover:opacity-80`} onClick={closeMobileMenu}>
                 Explore Products
               </Link>
-              <Link href="/business" className={`px-4 py-2 ${textClass} hover:opacity-80`}>
-                Become a Seller
+              <Link href={businessCtaHref} className={`px-4 py-2 ${textClass} hover:opacity-80`} onClick={closeMobileMenu}>
+                {businessCtaLabel}
               </Link>
-              <Link href={dashboardHref} className={`px-4 py-2 ${textClass} hover:opacity-80`}>
-                {sessionUser ? "Dashboard" : "Sign in"}
+              <Link href={isLoggedIn ? dashboardHref : signInHref} className={`px-4 py-2 ${textClass} hover:opacity-80`} onClick={closeMobileMenu}>
+                {isLoggedIn ? "Dashboard" : "Sign in"}
               </Link>
-              {sessionUser ? (
+              {isLoggedIn ? (
                 <>
-                  <Link href="/marketplace" className={`px-4 py-2 ${textClass} hover:opacity-80`}>
-                    Marketplace
-                  </Link>
+                  {!isBusiness && (
+                    <Link href={sellerWorkspaceHref} className={`px-4 py-2 ${textClass} hover:opacity-80`} onClick={closeMobileMenu}>
+                      Sales Workspace
+                    </Link>
+                  )}
                   <div className="px-4 py-2">
                     <Button
                       className="w-full bg-[#222325] hover:bg-[#404145] text-white"
                       onClick={() => {
                         signOut()
                         setSessionUser(null)
+                        closeMobileMenu()
                         router.push("/")
                       }}
                     >
@@ -193,7 +217,7 @@ export function Header({ variant = "dark", showSearch = false }: HeaderProps) {
                   </div>
                 </>
               ) : (
-                <Link href="/onboarding" className="px-4 py-2">
+                <Link href="/onboarding" className="px-4 py-2" onClick={closeMobileMenu}>
                   <Button className="w-full bg-[#1DBF73] hover:bg-[#19A463] text-white">
                     Join
                   </Button>

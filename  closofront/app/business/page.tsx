@@ -71,6 +71,7 @@ type RecentSale = {
   referralCode?: string
   verificationMethod?: string
   verificationReference?: string
+  verificationNote?: string
   verifiedAt?: string
   createdAt: string
 }
@@ -196,6 +197,30 @@ export default function BusinessDashboard() {
     setVerifyingSaleId(null)
     if (!result) return
     setVerifyMessage(`Queued sale verified: ${result.saleId}`)
+    setVerificationReference("")
+    setVerificationNote("")
+    await loadBusinessDashboard()
+  }
+
+  const rejectQueuedSale = async (saleId: string) => {
+    setVerifyMessage(null)
+    setVerifyingSaleId(saleId)
+    const result = await apiPost<{ saleId: string; status: string }>(
+      "/sales/reject",
+      {
+        saleId,
+        verificationMethod: verificationMethod || "manual_reject",
+        verificationReference: verificationReference || undefined,
+        verificationNote: verificationNote || "Rejected from startup dashboard review",
+      },
+      true,
+    ).catch((err) => {
+      setVerifyMessage(err instanceof Error ? err.message : "Queued sale rejection failed.")
+      return null
+    })
+    setVerifyingSaleId(null)
+    if (!result) return
+    setVerifyMessage(`Queued sale rejected: ${result.saleId}`)
     setVerificationReference("")
     setVerificationNote("")
     await loadBusinessDashboard()
@@ -522,13 +547,23 @@ export default function BusinessDashboard() {
                 </p>
                 <p className="text-xs text-[#95979D]">Created: {new Date(sale.createdAt).toLocaleString()}</p>
               </div>
-              <Button
-                className="bg-[#1DBF73] hover:bg-[#19A463] text-white"
-                onClick={() => verifyQueuedSale(sale.id)}
-                disabled={verifyingSaleId === sale.id}
-              >
-                {verifyingSaleId === sale.id ? "Verifying..." : "Verify Sale"}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  className="bg-[#1DBF73] hover:bg-[#19A463] text-white"
+                  onClick={() => verifyQueuedSale(sale.id)}
+                  disabled={verifyingSaleId === sale.id}
+                >
+                  {verifyingSaleId === sale.id ? "Processing..." : "Verify"}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20"
+                  onClick={() => rejectQueuedSale(sale.id)}
+                  disabled={verifyingSaleId === sale.id}
+                >
+                  {verifyingSaleId === sale.id ? "Processing..." : "Reject"}
+                </Button>
+              </div>
             </div>
           ))}
           {!loading && !verificationQueue.length && (
@@ -619,6 +654,7 @@ export default function BusinessDashboard() {
                 <th className="text-left py-3 px-6 text-xs text-[#95979D]">Status</th>
                 <th className="text-left py-3 px-6 text-xs text-[#95979D]">Verification</th>
                 <th className="text-left py-3 px-6 text-xs text-[#95979D]">Reference</th>
+                <th className="text-left py-3 px-6 text-xs text-[#95979D]">Note</th>
               </tr>
             </thead>
             <tbody>
@@ -632,11 +668,12 @@ export default function BusinessDashboard() {
                   </td>
                   <td className="py-3 px-6 text-xs text-[#95979D]">{sale.verificationMethod ?? "-"}</td>
                   <td className="py-3 px-6 text-xs text-[#95979D]">{sale.verificationReference ?? sale.externalReference ?? "-"}</td>
+                  <td className="py-3 px-6 text-xs text-[#95979D]">{sale.verificationNote ?? "-"}</td>
                 </tr>
               ))}
               {!loading && !recentSales.length && (
                 <tr>
-                  <td className="py-6 px-6 text-center text-[#95979D]" colSpan={6}>
+                  <td className="py-6 px-6 text-center text-[#95979D]" colSpan={7}>
                     No sales activity yet.
                   </td>
                 </tr>
