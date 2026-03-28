@@ -1,0 +1,42 @@
+{
+  "name": "closobackend",
+  "version": "1.0.0",
+  "description": "MonadBlitz Sales OS backend",
+  "license": "ISC",
+  "author": "",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/main.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "db:migrate": "ts-node scripts/migrate.ts",
+    "db:seed": "ts-node scripts/seed.ts",
+    "test:flow": "ts-node scripts/demo-flow.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.17",
+    "@nestjs/config": "^4.0.3",
+    "@nestjs/core": "^11.1.17",
+    "@nestjs/jwt": "^11.0.2",
+    "@nestjs/platform-express": "^11.1.17",
+    "bcryptjs": "^3.0.3",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
+    "ethers": "^6.16.0",
+    "googleapis": "^171.4.0",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "pg": "^8.20.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^25.5.0",
+    "@types/passport-jwt": "^4.0.1",
+    "@types/pg": "^8.20.0",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^6.0.2"
+  }
+}

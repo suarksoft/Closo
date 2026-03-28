@@ -1,0 +1,294 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+/* Closo Sales OS - Fiverr-Inspired Color Palette */
+:root {
+  /* Light theme - Fiverr style */
+  --background: #FFFFFF;
+  --foreground: #222325;
+  /* Card Background: White with subtle border */
+  --card: #FFFFFF;
+  --card-foreground: #222325;
+  --popover: #FFFFFF;
+  --popover-foreground: #222325;
+  /* Primary Accent: Fiverr Green #1DBF73 */
+  --primary: #1DBF73;
+  --primary-foreground: #FFFFFF;
+  /* Secondary Background */
+  --secondary: #F5F5F5;
+  --secondary-foreground: #222325;
+  --muted: #FAFAFA;
+  /* Text Secondary: #74767E */
+  --muted-foreground: #74767E;
+  /* Accent: Dark header/footer color */
+  --accent: #222325;
+  --accent-foreground: #FFFFFF;
+  --destructive: #E02C2C;
+  --destructive-foreground: #FFFFFF;
+  /* Border: Light gray */
+  --border: #E4E5E7;
+  --input: #FFFFFF;
+  --ring: #1DBF73;
+  /* Success (Money / Earnings): Green */
+  --success: #1DBF73;
+  /* Warning: Orange */
+  --warning: #FFC107;
+  /* Chart colors */
+  --chart-1: #1DBF73;
+  --chart-2: #222325;
+  --chart-3: #446EE7;
+  --chart-4: #FFC107;
+  --chart-5: #FF6B6B;
+  --radius: 0.5rem;
+  /* Sidebar - Dark theme */
+  --sidebar: #1A1B1D;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #1DBF73;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #2B2C2E;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #404145;
+  --sidebar-ring: #1DBF73;
+}
+
+.dark {
+  --background: #1A1B1D;
+  --foreground: #FFFFFF;
+  --card: #222325;
+  --card-foreground: #FFFFFF;
+  --popover: #222325;
+  --popover-foreground: #FFFFFF;
+  --primary: #1DBF73;
+  --primary-foreground: #FFFFFF;
+  --secondary: #2B2C2E;
+  --secondary-foreground: #FFFFFF;
+  --muted: #2B2C2E;
+  --muted-foreground: #95979D;
+  --accent: #404145;
+  --accent-foreground: #FFFFFF;
+  --destructive: #E02C2C;
+  --destructive-foreground: #FFFFFF;
+  --border: #404145;
+  --input: #2B2C2E;
+  --ring: #1DBF73;
+  --success: #1DBF73;
+  --warning: #FFC107;
+  --chart-1: #1DBF73;
+  --chart-2: #446EE7;
+  --chart-3: #FF6B6B;
+  --chart-4: #FFC107;
+  --chart-5: #9B59B6;
+  --sidebar: #1A1B1D;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #1DBF73;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #2B2C2E;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #404145;
+  --sidebar-ring: #1DBF73;
+}
+
+@theme inline {
+  --font-sans: 'Inter', 'Inter Fallback', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback', monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Category card with gradient backgrounds */
+.category-card {
+  border-radius: 8px;
+  padding: 24px;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.category-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+}
+
+/* Service cards with colored backgrounds */
+.service-green { background: linear-gradient(135deg, #1A472A 0%, #2D5A3D 100%); }
+.service-teal { background: linear-gradient(135deg, #0D4F4F 0%, #1A6B6B 100%); }
+.service-orange { background: linear-gradient(135deg, #D4A574 0%, #E8C9A8 100%); }
+.service-pink { background: linear-gradient(135deg, #C4A5B5 0%, #E8D5DD 100%); }
+.service-mint { background: linear-gradient(135deg, #A8D5BA 0%, #C8E6D0 100%); }
+.service-peach { background: linear-gradient(135deg, #F5D5C8 0%, #FFE8E0 100%); }
+
+/* Dark hero section */
+.hero-dark {
+  background: #222325;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Glass header */
+.glass-header {
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #E4E5E7;
+}
+
+/* Dark header for hero section */
+.header-dark {
+  background: #222325;
+  border-bottom: 1px solid #404145;
+}
+
+/* Primary button - Fiverr green */
+.btn-primary {
+  background: #1DBF73;
+  color: white;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: #19A463;
+}
+
+/* Outline button */
+.btn-outline {
+  background: transparent;
+  color: #222325;
+  border: 1px solid #222325;
+  transition: all 0.2s ease;
+}
+
+.btn-outline:hover {
+  background: #222325;
+  color: white;
+}
+
+/* Category icon card */
+.icon-card {
+  background: #FFFFFF;
+  border: 1px solid #E4E5E7;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.icon-card:hover {
+  border-color: #222325;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* Trust badge */
+.trust-section {
+  background: #FAFAFA;
+  border-top: 1px solid #E4E5E7;
+}
+
+/* Maroon CTA section */
+.cta-maroon {
+  background: #4A2C2A;
+  border-radius: 16px;
+}
+
+/* Success highlight */
+.text-success {
+  color: #1DBF73;
+}
+
+/* Card with hover */
+.card-hover {
+  background: #FFFFFF;
+  border: 1px solid #E4E5E7;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.card-hover:hover {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  border-color: #D1D5DB;
+}
+
+/* Search input */
+.search-input {
+  background: #FFFFFF;
+  border: 1px solid #E4E5E7;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 16px;
+  width: 100%;
+  transition: border-color 0.2s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #222325;
+}
+
+/* Tag pills */
+.tag-pill {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tag-pill:hover {
+  background: rgba(255,255,255,0.2);
+  border-color: rgba(255,255,255,0.5);
+}
