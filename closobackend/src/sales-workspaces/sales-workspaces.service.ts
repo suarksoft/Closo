@@ -81,13 +81,16 @@ export class SalesWorkspacesService {
     workspaceId: string,
     values: Array<{ assetType: string; content: string; persona?: string; tone?: string }>,
   ) {
-    if (!values.length) return;
+    const safeValues = values.filter(
+      (entry) => typeof entry.content === "string" && entry.content.trim().length > 0,
+    );
+    if (!safeValues.length) return;
     await Promise.all(
-      values.map((entry) =>
+      safeValues.map((entry) =>
         this.db.query(
           `INSERT INTO workspace_assets (workspace_id, asset_type, content, persona, tone)
            VALUES ($1, $2, $3, $4, $5)`,
-          [workspaceId, entry.assetType, entry.content, entry.persona ?? null, entry.tone ?? null],
+          [workspaceId, entry.assetType, entry.content.trim(), entry.persona ?? null, entry.tone ?? null],
         ),
       ),
     );

@@ -128,7 +128,7 @@ export function Header({ variant = "dark", showSearch = false }: HeaderProps) {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
-                    className={`ml-2 rounded-md text-sm font-medium ${isDark ? "border-white text-white hover:bg-white hover:text-[#222325]" : "border-[#222325] text-[#222325] hover:bg-[#222325] hover:text-white"}`}
+                    className={`ml-2 rounded-md text-sm font-medium ${isDark ? "border-white bg-white text-[#222325] hover:bg-white/90 hover:text-[#222325]" : "border-[#222325] text-[#222325] hover:bg-[#222325] hover:text-white"}`}
                   >
                     {joinLabel}
                   </Button>
@@ -165,7 +165,7 @@ export function Header({ variant = "dark", showSearch = false }: HeaderProps) {
               <Link href="/onboarding">
                 <Button
                   variant="outline"
-                  className={`ml-2 rounded-md text-sm font-medium ${isDark ? "border-white text-white hover:bg-white hover:text-[#222325]" : "border-[#222325] text-[#222325] hover:bg-[#222325] hover:text-white"}`}
+                  className={`ml-2 rounded-md text-sm font-medium ${isDark ? "border-white bg-white text-[#222325] hover:bg-white/90 hover:text-[#222325]" : "border-[#222325] text-[#222325] hover:bg-[#222325] hover:text-white"}`}
                 >
                   {joinLabel}
                 </Button>
@@ -218,7 +218,7 @@ export function Header({ variant = "dark", showSearch = false }: HeaderProps) {
                 </>
               ) : (
                 <Link href="/onboarding" className="px-4 py-2" onClick={closeMobileMenu}>
-                  <Button className="w-full bg-[#1DBF73] hover:bg-[#19A463] text-white">
+                  <Button className="w-full bg-[#1DBF73] hover:bg-[#19A463] text-black">
                     Join
                   </Button>
                 </Link>

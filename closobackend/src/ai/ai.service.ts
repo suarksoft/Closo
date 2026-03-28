@@ -6,6 +6,80 @@ import { PlacesSearchDto } from "./dto/places-search.dto";
 
 @Injectable()
 export class AiService {
+  private toNonEmptyString(value: unknown, fallback: string) {
+    if (typeof value !== "string") return fallback;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : fallback;
+  }
+
+  private normalizeWorkspaceScriptResult(
+    parsed: Partial<{
+      emailSubject: string;
+      emailBody: string;
+      whatsappMessage: string;
+      instagramDm: string;
+      callScript: string;
+      objectionReply: string;
+    }>,
+    productName: string,
+  ) {
+    return {
+      emailSubject: this.toNonEmptyString(parsed.emailSubject, `${productName} ile satis surecinizi hizlandirin`),
+      emailBody: this.toNonEmptyString(
+        parsed.emailBody,
+        `Merhaba,\n\n${productName} ile ekipler daha hizli karar alir ve daha cok anlasma kapatir. 15 dakikalik bir demo planlayalim mi?`,
+      ),
+      whatsappMessage: this.toNonEmptyString(
+        parsed.whatsappMessage,
+        `${productName} ile satis surecini sadeleştirip donusumu artiriyoruz. Kisa bir gorusme yapalim mi?`,
+      ),
+      instagramDm: this.toNonEmptyString(
+        parsed.instagramDm,
+        `${productName} ile outbound surecinizi hizlandirabilecek net bir akisimiz var. Kisa bir demo ister misiniz?`,
+      ),
+      callScript: this.toNonEmptyString(
+        parsed.callScript,
+        `Acilis: Merhaba, ${productName} ile nasil daha hizli satis kapanisi yaptirdigimizi paylasmak istiyorum.\nCTA: Bu hafta 15 dakikalik bir gorusme planlayabilir miyiz?`,
+      ),
+      objectionReply: this.toNonEmptyString(
+        parsed.objectionReply,
+        "Anliyorum. Kucuk bir pilot ile 1 hafta icinde net etkiyi birlikte olcebiliriz.",
+      ),
+    };
+  }
+
+  private normalizeWorkspaceSequenceSteps(
+    steps: unknown,
+    productName: string,
+  ): Array<{ channel: string; stepNo: number; delayHours: number; goal: string }> {
+    if (!Array.isArray(steps)) {
+      return [
+        { channel: "email", stepNo: 1, delayHours: 0, goal: `${productName} icin ilk temas` },
+        { channel: "whatsapp", stepNo: 2, delayHours: 24, goal: "Kisa follow-up" },
+      ];
+    }
+
+    const cleaned = steps
+      .map((step, index) => {
+        const record = (step ?? {}) as Record<string, unknown>;
+        const channel = this.toNonEmptyString(record.channel, "email");
+        const stepNoRaw = typeof record.stepNo === "number" ? record.stepNo : index + 1;
+        const delayHoursRaw = typeof record.delayHours === "number" ? record.delayHours : 0;
+        const goal = this.toNonEmptyString(record.goal, `${productName} outreach step ${index + 1}`);
+        return {
+          channel,
+          stepNo: stepNoRaw > 0 ? Math.floor(stepNoRaw) : index + 1,
+          delayHours: delayHoursRaw >= 0 ? Math.floor(delayHoursRaw) : 0,
+          goal,
+        };
+      })
+      .filter((step) => step.goal.length > 0);
+
+    return cleaned.length
+      ? cleaned
+      : [{ channel: "email", stepNo: 1, delayHours: 0, goal: `${productName} icin ilk temas` }];
+  }
+
   private hasApiKey() {
     return Boolean(process.env.OPENAI_API_KEY);
   }
@@ -268,16 +342,19 @@ Return JSON keys: rubric`,
     tone?: string;
   }) {
     if (!this.hasApiKey()) {
-      return {
-        emailSubject: `${input.productName} ile satis performansinizi artis moduna alin`,
-        emailBody: `Merhaba,\n\n${input.productName} ile ekibiniz daha kisa surede daha cok anlasma kapatabilir. 15 dakikalik demo ister misiniz?`,
-        whatsappMessage: `${input.productName} ile satin alma karar suresini kisaltiyoruz. 10 dk goruselim mi?`,
-        instagramDm: `${input.productName} ile satis surecini hizlandiran net bir modelimiz var. Kisa bir demo ister misiniz?`,
-        callScript:
-          `Acilis: Merhaba, ben Closo'dan ariyorum. 30 saniyede neden aradigimi paylasayim.\nDeger: ${input.productName} ekiplerin daha hizli kapanis yapmasina yardimci olur.\nCTA: Uygunsaniz bu hafta 15 dakikalik kisa bir gorusme planlayalim.`,
-        objectionReply:
-          "Anliyorum, zaman her ekipte kisitli. Bu nedenle pilotu kucuk baslatiyoruz ve ilk hafta icinde etkisini net olcebiliyoruz.",
-      };
+      return this.normalizeWorkspaceScriptResult(
+        {
+          emailSubject: `${input.productName} ile satis performansinizi artis moduna alin`,
+          emailBody: `Merhaba,\n\n${input.productName} ile ekibiniz daha kisa surede daha cok anlasma kapatabilir. 15 dakikalik demo ister misiniz?`,
+          whatsappMessage: `${input.productName} ile satin alma karar suresini kisaltiyoruz. 10 dk goruselim mi?`,
+          instagramDm: `${input.productName} ile satis surecini hizlandiran net bir modelimiz var. Kisa bir demo ister misiniz?`,
+          callScript:
+            `Acilis: Merhaba, ben Closo'dan ariyorum. 30 saniyede neden aradigimi paylasayim.\nDeger: ${input.productName} ekiplerin daha hizli kapanis yapmasina yardimci olur.\nCTA: Uygunsaniz bu hafta 15 dakikalik kisa bir gorusme planlayalim.`,
+          objectionReply:
+            "Anliyorum, zaman her ekipte kisitli. Bu nedenle pilotu kucuk baslatiyoruz ve ilk hafta icinde etkisini net olcebiliyoruz.",
+        },
+        input.productName,
+      );
     }
 
     const payload = {
@@ -300,35 +377,44 @@ Return keys: emailSubject, emailBody, whatsappMessage, instagramDm, callScript, 
     const data = (await response.json()) as { output_text?: string };
     const text = data.output_text ?? "{}";
     try {
-      return JSON.parse(text) as {
-        emailSubject: string;
-        emailBody: string;
-        whatsappMessage: string;
-        instagramDm: string;
-        callScript: string;
-        objectionReply: string;
-      };
+      return this.normalizeWorkspaceScriptResult(
+        JSON.parse(text) as {
+          emailSubject?: string;
+          emailBody?: string;
+          whatsappMessage?: string;
+          instagramDm?: string;
+          callScript?: string;
+          objectionReply?: string;
+        },
+        input.productName,
+      );
     } catch {
-      return {
-        emailSubject: `${input.productName} ile hizli buyume`,
-        emailBody: text,
-        whatsappMessage: text,
-        instagramDm: text,
-        callScript: text,
-        objectionReply: text,
-      };
+      return this.normalizeWorkspaceScriptResult(
+        {
+          emailSubject: `${input.productName} ile hizli buyume`,
+          emailBody: text,
+          whatsappMessage: text,
+          instagramDm: text,
+          callScript: text,
+          objectionReply: text,
+        },
+        input.productName,
+      );
     }
   }
 
   async generateWorkspaceSequences(input: { productName: string; persona?: string }) {
     if (!this.hasApiKey()) {
       return {
-        steps: [
-          { channel: "email", stepNo: 1, delayHours: 0, goal: `${input.productName} icin ilk temas` },
-          { channel: "whatsapp", stepNo: 2, delayHours: 24, goal: "Kisa follow-up ve cevap tetikleme" },
-          { channel: "instagram", stepNo: 3, delayHours: 48, goal: "DM ile gorusme teklifi" },
-          { channel: "phone", stepNo: 4, delayHours: 72, goal: "Karar verici ile call ayarlama" },
-        ],
+        steps: this.normalizeWorkspaceSequenceSteps(
+          [
+            { channel: "email", stepNo: 1, delayHours: 0, goal: `${input.productName} icin ilk temas` },
+            { channel: "whatsapp", stepNo: 2, delayHours: 24, goal: "Kisa follow-up ve cevap tetikleme" },
+            { channel: "instagram", stepNo: 3, delayHours: 48, goal: "DM ile gorusme teklifi" },
+            { channel: "phone", stepNo: 4, delayHours: 72, goal: "Karar verici ile call ayarlama" },
+          ],
+          input.productName,
+        ),
       };
     }
 
@@ -352,14 +438,17 @@ Return key: steps (array of {channel,stepNo,delayHours,goal}) for channels email
     try {
       const parsed = JSON.parse(text) as { steps?: Array<{ channel: string; stepNo: number; delayHours: number; goal: string }> };
       return {
-        steps: parsed.steps ?? [],
+        steps: this.normalizeWorkspaceSequenceSteps(parsed.steps ?? [], input.productName),
       };
     } catch {
       return {
-        steps: [
-          { channel: "email", stepNo: 1, delayHours: 0, goal: text.slice(0, 120) || "Initial contact" },
-          { channel: "whatsapp", stepNo: 2, delayHours: 24, goal: "Follow-up" },
-        ],
+        steps: this.normalizeWorkspaceSequenceSteps(
+          [
+            { channel: "email", stepNo: 1, delayHours: 0, goal: text.slice(0, 120) || "Initial contact" },
+            { channel: "whatsapp", stepNo: 2, delayHours: 24, goal: "Follow-up" },
+          ],
+          input.productName,
+        ),
       };
     }
   }
